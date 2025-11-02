@@ -2,7 +2,7 @@ name: strategy-bot
 
 on:
   schedule:
-    - cron: "0 */2 * * *"   # 2 saatte bir
+    - cron: "0 */* * * *"   # her saat basi
   workflow_dispatch:
 
 jobs:
