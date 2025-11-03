@@ -1,20 +1,17 @@
-name: strategy-bot
+name: multi-timeframe-bot
 
 on:
   schedule:
-    - cron: "0 * * * *"   # her saat başı
+    - cron: "0 * * * *"   # her saat başı: 1H + 4H + 1D birlikte tarar
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -23,9 +20,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Strategy Bot
+      - name: Run Multi Scan
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: |
-          python strategy_scan.py
+        run: python multi_scan.py
