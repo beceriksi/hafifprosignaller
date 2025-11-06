@@ -2,6 +2,7 @@ import os, time, requests
 import pandas as pd
 import numpy as np
 from datetime import datetime, timezone
+import ccxt  # <-- CCXT ile coin listesi (1. kod mantığı)
 
 # -------- Secrets
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -49,7 +50,6 @@ def adx(df,n=14):
     return dx.ewm(alpha=1/n, adjust=False).mean()
 
 def volume_signal(df, n, r_min, z_min, ramp_min):
-    """USDT turnover tabanlı hacim tetikleyici: EMA oran + z-score + ramp (3'lü)"""
     t = df['turnover'].astype(float)
     if len(t) < max(3, n+2): return False, {"ratio":1.0,"z":0.0,"ramp":1.0}
     base_ema = t.ewm(span=n, adjust=False).mean()
@@ -88,17 +88,37 @@ def market_note():
     arrow="↑" if (btc is not None and btc>total) else ("↓" if (btc is not None and btc<total) else "→")
     dirb ="↑" if (btc is not None and btc>0) else ("↓" if (btc is not None and btc<0) else "→")
     total2="↑ (Altlara giriş)" if arrow=="↓" and total>=0 else ("↓ (Çıkış)" if arrow=="↑" and total<=0 else "→ (Karışık)")
-    usdt_note=f"{usdt:.1f}%"; 
+    usdt_note=f"{usdt:.1f}%"
     if usdt>=7: usdt_note+=" (riskten kaçış)"
     elif usdt<=5: usdt_note+=" (risk alımı)"
     return f"Piyasa: BTC {dirb} + BTC.D {arrow} (BTC.D {btcd:.1f}%) | Total2: {total2} | USDT.D: {usdt_note}"
 
-# -------- MEXC data
-def mexc_symbols():
-    d=jget(f"{MEXC}/api/v1/contract/detail")
-    if not d or "data" not in d: return []
-    return [s["symbol"] for s in d["data"] if s.get("quoteCoin")=="USDT"]
+# -------- CCXT ile COIN LİSTESİ (1. koddaki gibi) --------
+def get_mexc_usdt_perp_symbols(limit=500):
+    """
+    MEXC USDT perpetual (swap) piyasalarını ccxt ile alır.
+    Dönen liste MEXC Contract API ile TAM UYUMLUDUR (örn: 'BTC_USDT').
+    """
+    try:
+        ex = ccxt.mexc({
+            'enableRateLimit': True,
+            'options': {'defaultType': 'swap'}  # USDT perpetual
+        })
+        ex.load_markets()
+        syms = []
+        for s, m in ex.markets.items():
+            # m['id'] örn: 'BTC_USDT' (MEXC contract API ile aynı)
+            if m.get('active') and m.get('contract') and m.get('linear') and m.get('quote') == 'USDT':
+                syms.append(m['id'])
+        # hacme göre sıralamak için 24h tickerdan quoteVol çekmeyi deneyebiliriz (opsiyonel)
+        # Contract 24h ticker endpoint'i yoksa raw listeden gidelim:
+        syms = sorted(set(syms))
+        return syms[:limit]
+    except Exception as e:
+        print("CCXT MEXC symbol fetch error:", e)
+        return []
 
+# -------- MEXC data
 def klines(sym, interval, limit):
     d=jget(f"{MEXC}/api/v1/contract/kline/{sym}",{"interval":interval,"limit":limit})
     if not d or "data" not in d: return None
@@ -113,25 +133,14 @@ def funding(sym):
 
 # -------- Core scan per timeframe
 def scan_timeframe(sym, tf, cfg):
-    """
-    cfg = dict(
-        interval="1h"/"4h"/"1d", limit=int,
-        turnover_min=float,
-        gap_pct=float,
-        vol_n=int, vol_ratio=float, vol_z=float, vol_ramp=float,
-        rsi_buy=float, rsi_sell=float
-    )
-    """
     df = klines(sym, cfg["interval"], cfg["limit"])
     if df is None or len(df) < cfg["vol_n"]+5: return None, "short"
 
-    # likidite tabanı
     if float(df["turnover"].iloc[-1]) < cfg["turnover_min"]: return None, "lowliq"
 
     c,h,l = df["close"], df["high"], df["low"]
     if not gap_ok(c, cfg["gap_pct"]): return None, "gap"
 
-    # Trend & RSI (ADX sadece bilgi)
     e20,e50 = ema(c,20).iloc[-1], ema(c,50).iloc[-1]
     trend_up = e20 > e50
     rr = float(rsi(c,14).iloc[-1])
@@ -143,7 +152,6 @@ def scan_timeframe(sym, tf, cfg):
     last_down = float(c.iloc[-1]) < float(c.iloc[-2])
 
     side = None
-    # Hafifletilmiş ama güvenli:
     if trend_up and rr > cfg["rsi_buy"]:
         side = "BUY"
     elif (not trend_up) and rr < cfg["rsi_sell"] and last_down:
@@ -162,10 +170,10 @@ def scan_timeframe(sym, tf, cfg):
     return (side, line), None
 
 def run_scan(cfg, tf_label):
-    syms = mexc_symbols()
+    syms = get_mexc_usdt_perp_symbols()
     buys, sells = [], []
     skipped = {"short":0,"lowliq":0,"gap":0,"novol":0}
-    if not syms: return buys, sells, skipped, "⚠️ MEXC sembol listesi alınamadı."
+    if not syms: return buys, sells, skipped, "⚠️ CCXT ile MEXC sembol listesi alınamadı."
 
     for i, s in enumerate(syms):
         try:
@@ -184,7 +192,6 @@ def main():
     btc4, eth4 = coin_state("BTCUSDT","4h"), coin_state("ETHUSDT","4h")
     btcD = f"BTC(1H): {btc1} | BTC(4H): {btc4} | ETH(1H): {eth1} | ETH(4H): {eth4}"
 
-    # Hafifletilmiş ama güvenli eşikler
     CFG_1H = dict(interval="1h", limit=200, turnover_min=400_000, gap_pct=0.08,
                   vol_n=10, vol_ratio=1.10, vol_z=0.8, vol_ramp=1.3, rsi_buy=49.0, rsi_sell=51.0)
     CFG_4H = dict(interval="4h", limit=260, turnover_min=800_000, gap_pct=0.08,
@@ -197,7 +204,6 @@ def main():
     bD, sD, kD, eD = run_scan(CFG_1D, "1D")
 
     if (not b1 and not s1) and (not b4 and not s4) and (not bD and not sD):
-        # Tamamen sessiz: spam atma, sadece logla
         print("No signals across 1H/4H/1D at", ts())
         return
 
