@@ -19,4 +19,7 @@ jobs:
           pip install requests
 
       - name: OKX list test
+        run: python okx_test_list.py 
+      - name: Test OKX List
         run: python okx_test_list.py
+
