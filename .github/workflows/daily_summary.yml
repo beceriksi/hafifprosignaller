@@ -1,0 +1,37 @@
+name: okx-daily-summary
+
+on:
+  schedule:
+    - cron: "0 15 * * *"    # 15:00 UTC = 18:00 TR
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily summary
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TOP_N: "200"
+          VOL_MIN_EARLY: "200000"
+          VOL_MIN_CONF: "300000"
+          VRATIO_EARLY: "3.2"
+          VRATIO_CONF: "3.7"
+          MOM_1M_MIN: "0.0045"
+          PULLBACK_MIN: "0.0025"
+          PULLBACK_MAX: "0.0080"
+          RSI5_CONF_MIN: "53.0"
+          MAX_MSG_COINS: "20"
+        run: python main_daily.py
