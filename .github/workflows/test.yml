@@ -1,2 +1,0 @@
-- name: Test OKX
-  run: python test_okx_list.py

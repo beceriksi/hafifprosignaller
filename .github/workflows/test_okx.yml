@@ -1,0 +1,23 @@
+name: test_okx
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-okx:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Repo Indir
+      uses: actions/checkout@v3
+
+    - name: Python Kur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Requests Yukle
+      run: pip install requests
+
+    - name: OKX Test Çalıştır
+      run: python test_okx_list.py
