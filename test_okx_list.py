@@ -9,7 +9,7 @@ def test_list():
     params = {"instType": "SPOT"}
 
     try:
-        r = requests.get(url, params=params, timeout=10)
+        r = requests.get(url, params=params, timeout=12)
         print("HTTP Status:", r.status_code)
         if r.status_code != 200:
             print("❌ HTTP hata")
@@ -19,32 +19,34 @@ def test_list():
         print("❌ İstek hatası:", e)
         return
 
-    print("Raw first 200 chars:")
-    print(str(j)[:200])
+    print("\nRaw first 300 chars:")
+    print(str(j)[:300], "\n")
 
-    if j.get("code") != "0":
-        print("❌ OKX 'code' ≠ 0 → Hata")
+    # OKX structure: {"code":"0","data":[...]}
+    code = j.get("code", None)
+    print("code:", code)
+    if code != "0":
+        print("❌ OKX 'code' ≠ 0 → API hatalı\n")
         return
+    print("✅ OKX 'code' = 0")
 
     data = j.get("data", [])
-    print("Toplam kayıt:", len(data))
-
-    if not data:
-        print("❌ Data boş")
+    if not isinstance(data, list):
+        print("❌ data list değil!\n")
         return
 
-    print("Örnek instId:", data[0].get("instId"))
+    print(f"✅ data bulunuyor ({len(data)} adet ticker)")
 
-    # ✅ Hacme göre sırala test
-    try:
-        data_sorted = sorted(data, key=lambda x: float(x.get("volCcy24h", "0")), reverse=True)
-        print("✅ İlk 5 coin (hacme göre):")
-        for r in data_sorted[:5]:
-            print("-", r.get("instId"), r.get("volCcy24h"))
-    except:
-        print("⚠️ Sıralama başarısız")
+    # FILTRELE — USDT quote içerenler (instId formatı: BTC-USDT veya BTC-USDC olabilir)
+    usdt = [x for x in data if "USDT" in x.get("instId", "")]
+    print("USDT eşleşen coin sayısı:", len(usdt))
 
-    print("✅ TEST BİTTİ")
+    if not usdt:
+        print("❌ USDT filtresi boş — OKX instId formatı değişmiş olabilir.")
+    else:
+        print("✅ USDT filtresi çalışıyor.")
+
+    print("\n✅ TEST BİTTİ")
 
 if __name__ == "__main__":
     test_list()
