@@ -1,0 +1,38 @@
+name: OKX Smart Scanner
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo çekiliyor
+        uses: actions/checkout@v3
+
+      - name: Python kuruluyor
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Kütüphaneler kuruluyor
+        run: |
+          pip install requests pandas numpy
+
+      - name: Sinyal Botu Çalışıyor
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TOP_N: 80
+          VOL_MIN_EARLY: 150000
+          VOL_MIN_CONF: 250000
+          VRATIO_EARLY: 3.0
+          VRATIO_CONF: 3.5
+          MOM_1M_MIN: 0.0045
+          PULLBACK_MIN: 0.0025
+          PULLBACK_MAX: 0.0080
+          RSI5_CONF_MIN: 53
+          MAX_MSG_COINS: 10
+        run: python main.py
