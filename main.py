@@ -7,15 +7,15 @@ CHAT_ID        = os.getenv("CHAT_ID")
 
 OKX_BASE       = "https://www.okx.com"
 TOP_N          = int(os.getenv("TOP_N", "200"))
-VOL_MIN_EARLY  = float(os.getenv("VOL_MIN_EARLY", "200000"))
-VOL_MIN_CONF   = float(os.getenv("VOL_MIN_CONF", "300000"))
-VRATIO_EARLY   = float(os.getenv("VRATIO_EARLY", "3.2"))
-VRATIO_CONF    = float(os.getenv("VRATIO_CONF", "3.7"))
-MOM_1M_MIN     = float(os.getenv("MOM_1M_MIN", "0.0045"))
-PULLBACK_MIN   = float(os.getenv("PULLBACK_MIN", "0.0025"))
-PULLBACK_MAX   = float(os.getenv("PULLBACK_MAX", "0.0080"))
-RSI5_CONF_MIN  = float(os.getenv("RSI5_CONF_MIN", "53.0"))
-MAX_MSG_COINS  = int(os.getenv("MAX_MSG_COINS", "20"))
+VOL_MIN_EARLY  = float(os.getenv("VOL_MIN_EARLY", "150000"))  # düşürüldü
+VOL_MIN_CONF   = float(os.getenv("VOL_MIN_CONF", "250000"))   # düşürüldü
+VRATIO_EARLY   = float(os.getenv("VRATIO_EARLY", "2.8"))      # gevşetildi
+VRATIO_CONF    = float(os.getenv("VRATIO_CONF", "3.2"))       # gevşetildi
+MOM_1M_MIN     = float(os.getenv("MOM_1M_MIN", "0.0040"))     # daha esnek momentum
+PULLBACK_MIN   = float(os.getenv("PULLBACK_MIN", "0.0020"))
+PULLBACK_MAX   = float(os.getenv("PULLBACK_MAX", "0.0100"))
+RSI5_CONF_MIN  = float(os.getenv("RSI5_CONF_MIN", "51.0"))    # RSI onayı biraz gevşetildi
+MAX_MSG_COINS  = int(os.getenv("MAX_MSG_COINS", "25"))
 
 # ====== FONKSİYONLAR ======
 def ts(): return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -74,7 +74,7 @@ def early_alert(df):
     if ema(c,20).iloc[-1] <= ema(c,50).iloc[-1]: return False, {}
     return True, {"v_ratio": v_ratio, "mom": mom}
 
-# ====== BUY ONAY ======
+# ====== BUY ======
 def buy_signal(df1, df5):
     if df1 is None or len(df1) < 50 or df5 is None: return False, {}
     t, c = df1["turnover"], df1["c"]
@@ -129,7 +129,7 @@ def main():
         print(f"{ts()} — sinyal yok.")
         return
 
-    msg = [f"🧭 *OKX 1m/5m Tarama*\n⏱ {ts()}\nToplam: {len(symbols)} coin"]
+    msg = [f"🧭 *OKX Hafifletilmiş Tarama*\n⏱ {ts()}\nTaranan: {len(symbols)} coin"]
     if early: msg.append("\n⚠️ *Erken Uyarılar*"); msg += early[:MAX_MSG_COINS]
     if buys: msg.append("\n📈 *BUY Sinyalleri*"); msg += [x[1] for x in buys[:MAX_MSG_COINS]]
     if sells: msg.append("\n📉 *SELL Sinyalleri*"); msg += [x[1] for x in sells[:MAX_MSG_COINS]]
