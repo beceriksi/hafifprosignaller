@@ -1,8 +1,8 @@
-name: OKX Smart Scanner
+name: OKX Smart Scanner (Hafifletilmiş)
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -22,13 +22,13 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           TOP_N: 200
-          VOL_MIN_EARLY: 200000
-          VOL_MIN_CONF: 300000
-          VRATIO_EARLY: 3.2
-          VRATIO_CONF: 3.7
-          MOM_1M_MIN: 0.0045
-          PULLBACK_MIN: 0.0025
-          PULLBACK_MAX: 0.0080
-          RSI5_CONF_MIN: 53.0
-          MAX_MSG_COINS: 20
+          VOL_MIN_EARLY: 150000
+          VOL_MIN_CONF: 250000
+          VRATIO_EARLY: 2.8
+          VRATIO_CONF: 3.2
+          MOM_1M_MIN: 0.0040
+          PULLBACK_MIN: 0.0020
+          PULLBACK_MAX: 0.0100
+          RSI5_CONF_MIN: 51.0
+          MAX_MSG_COINS: 25
         run: python main.py
